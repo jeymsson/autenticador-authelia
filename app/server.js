@@ -1,6 +1,9 @@
 const express = require('express');
+const path = require('path');
 const app = express();
 const PORT = 3000;
+
+app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/', (req, res) => {
   // Headers injetados pelo Authelia
@@ -14,40 +17,7 @@ app.get('/', (req, res) => {
     <html>
     <head>
       <title>Authelia Protected App</title>
-      <style>
-        body {
-          font-family: Arial, sans-serif;
-          max-width: 800px;
-          margin: 50px auto;
-          padding: 20px;
-          background: #f5f5f5;
-        }
-        .card {
-          background: white;
-          padding: 30px;
-          border-radius: 10px;
-          box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        h1 { color: #333; }
-        .info { 
-          background: #e8f4f8;
-          padding: 15px;
-          border-radius: 5px;
-          margin: 10px 0;
-        }
-        .label { 
-          font-weight: bold;
-          color: #555;
-        }
-        .value {
-          color: #007bff;
-          font-family: monospace;
-        }
-        .success {
-          color: #28a745;
-          font-size: 24px;
-        }
-      </style>
+      <link rel="stylesheet" href="/styles.css">
     </head>
     <body>
       <div class="card">
@@ -62,6 +32,7 @@ app.get('/', (req, res) => {
         </div>
         
         <hr>
+        <a class="logout" href="https://auth.localtest.me/logout">🚪 Deslogar</a>
         <p><small>Esta aplicação está protegida pelo Authelia através do Traefik.</small></p>
       </div>
     </body>
