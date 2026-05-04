@@ -1,0 +1,90 @@
+version: '3.8'
+
+services:
+  # Traefik - Reverse Proxy
+  traefik:
+    image: traefik:v2.11
+    container_name: traefik
+    command:
+      - --api.insecure=true
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"  # Dashboard do Traefik
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - auth-network
+
+  # PostgreSQL - Banco de Dados
+  postgres:
+    image: postgres:15-alpine
+    container_name: authelia-postgres
+    environment:
+      POSTGRES_DB: authelia
+      POSTGRES_USER: authelia
+      POSTGRES_PASSWORD: authelia123
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - auth-network
+    restart: unless-stopped
+
+  # Redis - Session Storage
+  redis:
+    image: redis:alpine
+    container_name: authelia-redis
+    networks:
+      - auth-network
+    restart: unless-stopped
+
+  # Authelia - Authentication Server
+  authelia:
+    image: authelia/authelia:latest
+    container_name: authelia
+    volumes:
+      - ./authelia:/config
+    environment:
+      - TZ=America/Sao_Paulo
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.authelia.rule=Host(`auth.localtest.me`)"
+      - "traefik.http.routers.authelia.entrypoints=websecure"
+      - "traefik.http.routers.authelia.tls=true"
+      - "traefik.http.services.authelia.loadbalancer.server.port=9091"
+
+      # Middleware ForwardAuth
+      - "traefik.http.middlewares.authelia.forwardauth.address=http://authelia:9091/api/authz/forward-auth"
+      - "traefik.http.middlewares.authelia.forwardauth.trustForwardHeader=true"
+      - "traefik.http.middlewares.authelia.forwardauth.authResponseHeaders=Remote-User,Remote-Groups,Remote-Name,Remote-Email"
+    networks:
+      - auth-network
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+
+  # Node.js App - Aplicação Protegida
+  app:
+    build: ./app
+    container_name: nodejs-app
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.app.rule=Host(`app.localtest.me`)"
+      - "traefik.http.routers.app.entrypoints=websecure"
+      - "traefik.http.routers.app.tls=true"
+      - "traefik.http.routers.app.middlewares=authelia@docker"
+      - "traefik.http.services.app.loadbalancer.server.port=3000"
+    networks:
+      - auth-network
+
+networks:
+  auth-network:
+    driver: bridge
+
+volumes:
+  postgres-data:

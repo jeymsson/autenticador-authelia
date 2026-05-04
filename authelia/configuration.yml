@@ -1,0 +1,60 @@
+server:
+  address: tcp://0.0.0.0:9091/
+
+log:
+  level: info
+
+identity_validation:
+  reset_password:
+    jwt_secret: my-super-secret-jwt-token-change-this-in-production
+
+totp:
+  issuer: authelia.com
+
+authentication_backend:
+  file:
+    path: /config/users_database.yml
+    password:
+      algorithm: argon2id
+      iterations: 1
+      salt_length: 16
+      parallelism: 8
+      memory: 64
+
+access_control:
+  default_policy: deny
+  rules:
+    # Acesso público ao Authelia
+    - domain: auth.localtest.me
+      policy: bypass
+
+    # One-factor para a aplicação
+    - domain: app.localtest.me
+      policy: one_factor
+
+session:
+  name: authelia_session
+  secret: my-super-secret-session-change-this-in-production
+  expiration: 1h
+  inactivity: 5m
+  cookies:
+    - domain: localtest.me
+      authelia_url: https://auth.localtest.me
+      default_redirection_url: https://app.localtest.me
+  redis:
+    host: redis
+    port: 6379
+
+storage:
+  encryption_key: change-this-to-a-random-string-of-at-least-20-chars
+  postgres:
+    address: tcp://postgres:5432
+    database: authelia
+    username: authelia
+    password: authelia123
+    ssl:
+      mode: disable
+
+notifier:
+  filesystem:
+    filename: /config/notification.txt
